@@ -1,45 +1,33 @@
-# Xcode user/session
-xcuserdata/
-.swiftpm/xcode/xcshareddata/
-.codexbar/config.json
-*.env
-*.local
+# Dependencies
+node_modules/
 
-# Build products
-.build/
-DerivedData
-
-# Bundles / artifacts
-# Main app bundle (any variation)
-CodexBar.app/
-CodexBar *.app/
-CodexBar_*.app/
-Codexbar.app/
-# Release artifacts
-*.ipa
-*.dSYM*
-*.zip
-*.delta
-*.dmg
-*.pkg
-*.tar.gz
-*.tgz
-Icon.iconset
-debug_*.swift
+# Build output
+dist/
+target/
 
 # Worktrees
 .worktrees/
 
-# Misc
-.DS_Store
+# Environment
+*.env
+*.env.*
+*.local
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.log
+
+# Test coverage
+coverage/
+
+# Misc
 .codex/environments/
-.swiftpm-cache/
-
-# Debug/analysis docs
-docs/*-analysis.md
-docs/.astro/
-
-# Swift Package Manager metadata (leave sources tracked)
-# Packages/
-# Package.resolved
