@@ -9,7 +9,7 @@ import type { Linter } from 'eslint'
 const config: Linter.Config[] = [
     { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
     {
-        ignores: ['**/src-tauri', '**/dist/**']
+        ignores: ['**/src-tauri', '**/dist/**', '**/target/**']
     },
     {
         languageOptions: {

@@ -1,3 +1,8 @@
+pub mod credential_commands;
+pub mod settings_commands;
+pub mod system_commands;
+pub mod usage_commands;
+
 use aibar_providers::models::ProviderId;
 use aibar_providers::registry;
 use serde::Serialize;
@@ -42,3 +47,15 @@ pub fn get_all_providers() -> Vec<ProviderInfo> {
         })
         .collect()
 }
+
+// Re-export all commands for convenient access outside the module.
+// These are used by lib.rs via full paths in generate_handler!, but re-exported
+// here for ergonomic use elsewhere.
+#[allow(unused_imports)]
+pub use credential_commands::{delete_credential, get_credential_status, store_api_token};
+#[allow(unused_imports)]
+pub use settings_commands::{get_settings, toggle_provider, update_settings};
+#[allow(unused_imports)]
+pub use system_commands::open_url;
+#[allow(unused_imports)]
+pub use usage_commands::{get_all_usage, refresh_all, refresh_provider};

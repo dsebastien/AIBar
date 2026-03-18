@@ -76,6 +76,7 @@ dependencies = [
  "aibar-providers",
  "anyhow",
  "log",
+ "open",
  "serde",
  "serde_json",
  "tauri",

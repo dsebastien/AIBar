@@ -1,89 +1,128 @@
-name: Release Linux CLI
+name: Release
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+    release:
+        types: [published]
+    workflow_dispatch:
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  build-linux-cli:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-x64
-            runs-on: ubuntu-24.04
-          - name: linux-arm64
-            runs-on: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runs-on }}
-    steps:
-      - uses: actions/checkout@v6
+    build-tauri:
+        name: Build Tauri (${{ matrix.target }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      target: linux
+                    - os: windows-latest
+                      target: windows
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Runner info
-        run: |
-          set -euo pipefail
-          uname -a
-          uname -m
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
 
-      - name: Setup Swift 6.2.1
-        uses: swift-actions/setup-swift@v3
-        with:
-          swift-version: "6.2.1"
-          skip-verify-signature: true
+            - uses: dtolnay/rust-toolchain@stable
 
-      - name: Build CodexBarCLI (release)
-        run: swift build -c release --product CodexBarCLI --static-swift-stdlib
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: '. -> target'
 
-      - name: Package
-        id: pkg
-        shell: bash
-        run: |
-          set -euo pipefail
+            - name: Install Linux dependencies
+              if: matrix.target == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsecret-1-dev
 
-          TAG="${GITHUB_REF_NAME}"
-          if [[ -z "$TAG" ]]; then
-            echo "Missing tag (GITHUB_REF_NAME)." >&2
-            exit 1
-          fi
+            - run: bun install --frozen-lockfile
 
-          ARCH="$(uname -m)"
-          case "$ARCH" in
-            x86_64) ARCH="x86_64" ;;
-            aarch64|arm64) ARCH="aarch64" ;;
-          esac
+            - name: Build Tauri app
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  tagName: v__VERSION__
+                  releaseName: 'AIBar v__VERSION__'
+                  releaseBody: 'See the assets to download and install this version.'
+                  releaseDraft: true
+                  prerelease: false
 
-          BIN_DIR="$(swift build -c release --product CodexBarCLI --static-swift-stdlib --show-bin-path)"
-          OUT_DIR="$(mktemp -d)"
-          install -m 0755 "$BIN_DIR/CodexBarCLI" "$OUT_DIR/CodexBarCLI"
-          ln -s "CodexBarCLI" "$OUT_DIR/codexbar"
+    build-cli:
+        name: Build CLI (${{ matrix.name }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: linux-x64
+                      os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                    - name: linux-arm64
+                      os: ubuntu-24.04-arm
+                      target: aarch64-unknown-linux-gnu
+                    - name: windows-x64
+                      os: windows-latest
+                      target: x86_64-pc-windows-msvc
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v4
 
-          ASSET="CodexBarCLI-${TAG}-linux-${ARCH}.tar.gz"
-          (cd "$OUT_DIR" && tar czf "$ASSET" CodexBarCLI codexbar)
-          sha256sum "$OUT_DIR/$ASSET" > "$OUT_DIR/$ASSET.sha256"
+            - uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: ${{ matrix.target }}
 
-          echo "out_dir=$OUT_DIR" >> "$GITHUB_OUTPUT"
-          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: '. -> target'
 
-      - name: Upload release assets
-        if: github.event_name == 'release'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          OUT_DIR="${{ steps.pkg.outputs.out_dir }}"
-          ASSET="${{ steps.pkg.outputs.asset }}"
-          gh release upload "$TAG" "$OUT_DIR/$ASSET" "$OUT_DIR/$ASSET.sha256" --clobber
+            - name: Install Linux dependencies
+              if: contains(matrix.os, 'ubuntu')
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libsecret-1-dev
 
-      - name: Upload workflow artifact (manual runs)
-        if: github.event_name != 'release'
-        uses: actions/upload-artifact@v6
-        with:
-          name: codexbar-linux-cli-${{ matrix.name }}
-          path: |
-            ${{ steps.pkg.outputs.out_dir }}/${{ steps.pkg.outputs.asset }}
-            ${{ steps.pkg.outputs.out_dir }}/${{ steps.pkg.outputs.asset }}.sha256
+            - name: Build CLI
+              run: cargo build --release --manifest-path src-cli/Cargo.toml --target ${{ matrix.target }}
+
+            - name: Package (Linux)
+              if: contains(matrix.os, 'ubuntu')
+              shell: bash
+              run: |
+                  TAG="${GITHUB_REF_NAME:-dev}"
+                  ASSET="aibar-cli-${TAG}-${{ matrix.name }}.tar.gz"
+                  tar czf "$ASSET" -C "target/${{ matrix.target }}/release" aibar-cli
+                  sha256sum "$ASSET" > "$ASSET.sha256"
+                  echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+
+            - name: Package (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                  $TAG = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "dev" }
+                  $ASSET = "aibar-cli-${TAG}-${{ matrix.name }}.zip"
+                  Compress-Archive -Path "target/${{ matrix.target }}/release/aibar-cli.exe" -DestinationPath $ASSET
+                  $hash = (Get-FileHash $ASSET -Algorithm SHA256).Hash.ToLower()
+                  "$hash  $ASSET" | Out-File "$ASSET.sha256"
+                  echo "ASSET=$ASSET" >> $env:GITHUB_ENV
+
+            - name: Upload release assets
+              if: github.event_name == 'release'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  TAG="${GITHUB_REF_NAME}"
+                  gh release upload "$TAG" "$ASSET" "$ASSET.sha256" --clobber
+
+            - name: Upload workflow artifact
+              if: github.event_name != 'release'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: aibar-cli-${{ matrix.name }}
+                  path: |
+                      ${{ env.ASSET }}
+                      ${{ env.ASSET }}.sha256
