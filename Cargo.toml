@@ -1,0 +1,16 @@
+[workspace]
+members = ["src-tauri", "crates/aibar-providers", "src-cli"]
+resolver = "2"
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+panic = "abort"
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true

@@ -1,0 +1,14 @@
+[package]
+name = "aibar-cli"
+version = "0.1.0"
+description = "AIBar CLI - AI usage monitoring from the command line"
+authors = ["AIBar Contributors"]
+license = "MIT"
+edition = "2024"
+
+[dependencies]
+aibar-providers = { path = "../crates/aibar-providers" }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+anyhow = "1.0"

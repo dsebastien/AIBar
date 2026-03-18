@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Running pre-commit checks..."
+
+# Format and lint staged files
+bunx lint-staged

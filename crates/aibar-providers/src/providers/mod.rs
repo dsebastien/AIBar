@@ -1,0 +1,24 @@
+pub mod ollama;
+
+// Provider modules will be added as they are implemented
+// pub mod claude;
+// pub mod codex;
+// pub mod cursor;
+// pub mod gemini;
+// pub mod copilot;
+// pub mod augment;
+// pub mod amp;
+// pub mod kimi;
+// pub mod kimi_k2;
+// pub mod zai;
+// pub mod minimax;
+// pub mod factory;
+// pub mod jetbrains;
+// pub mod kilo;
+// pub mod kiro;
+// pub mod vertex_ai;
+// pub mod synthetic;
+// pub mod warp;
+// pub mod openrouter;
+// pub mod antigravity;
+// pub mod opencode;

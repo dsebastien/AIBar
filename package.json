@@ -1,0 +1,123 @@
+{
+    "name": "aibar",
+    "private": true,
+    "version": "0.1.0",
+    "description": "Cross-platform AI usage monitoring system tray application",
+    "author": "AIBar Contributors",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "build:debug": "tauri build --debug",
+        "build:prod": "cd src-tauri && cargo build --release",
+        "cargo:check": "cd src-tauri && cargo check --keep-going",
+        "cargo:clippy": "cd src-tauri && cargo clippy --all-targets -- -D warnings 2>&1",
+        "cargo:format": "cd src-tauri && cargo fmt",
+        "cargo:format:check": "cd src-tauri && cargo fmt -- --check",
+        "cargo:test": "cd src-tauri && cargo test",
+        "cargo:update": "cd src-tauri && cargo update",
+        "check": "bun run check:all",
+        "check:all": "bun run check:frontend && bun run check:backend",
+        "check:backend": "bun run cargo:format:check && bun run cargo:clippy",
+        "check:frontend": "bun run lint && bun run format:check && bun run tsc",
+        "preview": "vite preview",
+        "tauri": "tauri",
+        "prepare": "husky",
+        "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "format:all": "bun run format && bun run cargo:format",
+        "test": "concurrently \"bun:test:frontend\" \"bun:test:backend\"",
+        "test:backend": "bun run cargo:test",
+        "test:frontend": "vitest run",
+        "test:watch": "vitest",
+        "tsc": "tsc --noEmit",
+        "tsc:watch": "tsc --noEmit --watch --preserveWatchOutput",
+        "validate": "bun run check:all && bun run test",
+        "commit": "cz",
+        "release": "release-it"
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "eslint --fix --max-warnings 0",
+            "prettier --write"
+        ],
+        "*.{js,jsx,json,css,md,yml,yaml}": [
+            "prettier --write"
+        ]
+    },
+    "config": {
+        "commitizen": {
+            "path": "node_modules/cz-customizable"
+        },
+        "cz-customizable": {
+            "config": ".cz-config.cjs"
+        }
+    },
+    "engines": {
+        "node": ">=20.0"
+    },
+    "dependencies": {
+        "@radix-ui/react-slot": "1.2.3",
+        "@radix-ui/react-tooltip": "1.2.8",
+        "@tailwindcss/vite": "4.1.17",
+        "@tauri-apps/api": "2.9.0",
+        "@tauri-apps/plugin-fs": "2.4.4",
+        "@tauri-apps/plugin-log": "2.7.1",
+        "@tauri-apps/plugin-opener": "2.5.2",
+        "@tauri-apps/plugin-os": "2.3.2",
+        "@tauri-apps/plugin-process": "2.3.1",
+        "@tauri-apps/plugin-shell": "2.3.3",
+        "@tauri-apps/plugin-store": "2.4.1",
+        "@tauri-apps/plugin-stronghold": "2.3.1",
+        "@tauri-apps/plugin-updater": "2.9.0",
+        "class-variance-authority": "0.7.1",
+        "clsx": "2.1.1",
+        "date-fns": "4.1.0",
+        "react": "19.2.0",
+        "react-dom": "19.2.0",
+        "react-error-boundary": "6.0.0",
+        "react-icons": "5.5.0",
+        "react-router": "7.9.6",
+        "react-toastify": "11.0.5",
+        "recharts": "2.15.3",
+        "tailwindcss": "4.1.17",
+        "tailwind-merge": "3.4.0",
+        "tailwindcss-animate": "1.0.7",
+        "zod": "4.1.13",
+        "zustand": "5.0.8"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "20.1.0",
+        "@commitlint/config-conventional": "20.0.0",
+        "@eslint/js": "9.39.1",
+        "@release-it/bumper": "7.0.5",
+        "@release-it/conventional-changelog": "10.0.2",
+        "@tauri-apps/cli": "2.9.4",
+        "@testing-library/jest-dom": "6.9.1",
+        "@testing-library/react": "16.3.0",
+        "@types/node": "24.10.1",
+        "@types/react": "19.2.3",
+        "@types/react-dom": "19.2.3",
+        "@vitejs/plugin-react": "5.1.1",
+        "commitizen": "4.3.1",
+        "concurrently": "9.2.1",
+        "cz-customizable": "7.5.1",
+        "eslint": "9.39.1",
+        "eslint-config-prettier": "10.1.8",
+        "eslint-plugin-react": "7.37.5",
+        "eslint-plugin-react-hooks": "7.0.1",
+        "globals": "16.5.0",
+        "husky": "9.1.7",
+        "jsdom": "27.2.0",
+        "lint-staged": "16.2.6",
+        "prettier": "3.6.2",
+        "prettier-plugin-tailwindcss": "0.7.1",
+        "release-it": "19.0.6",
+        "typescript": "5.9.3",
+        "typescript-eslint": "8.48.0",
+        "vite": "7.2.4",
+        "vitest": "4.0.14"
+    }
+}
