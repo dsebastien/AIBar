@@ -28,7 +28,7 @@ impl FetchStrategy for OpenCodeCookieStrategy {
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
         let cookie = find_opencode_cookie().await?;
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(OPENCODE_USAGE_API)
             .header(
@@ -85,41 +85,5 @@ impl FetchStrategy for OpenCodeCookieStrategy {
 }
 
 async fn find_opencode_cookie() -> anyhow::Result<String> {
-    let profiles = crate::auth::browser_detect::detect_browser_profiles();
-
-    for profile in &profiles {
-        match profile.browser {
-            crate::auth::browser_detect::Browser::Firefox => {
-                if let Ok(Some(val)) = crate::auth::cookie_firefox::read_firefox_cookies(
-                    &profile.profile_path,
-                    OPENCODE_HOST,
-                    OPENCODE_SESSION_COOKIE,
-                ) {
-                    return Ok(val);
-                }
-            }
-            _ => {
-                #[cfg(target_os = "linux")]
-                if let Ok(Some(val)) = crate::auth::cookie_chrome_linux::read_chrome_cookie(
-                    &profile.profile_path,
-                    OPENCODE_HOST,
-                    OPENCODE_SESSION_COOKIE,
-                )
-                .await
-                {
-                    return Ok(val);
-                }
-                #[cfg(target_os = "windows")]
-                if let Ok(Some(val)) = crate::auth::cookie_chrome_windows::read_chrome_cookie(
-                    &profile.profile_path,
-                    OPENCODE_HOST,
-                    OPENCODE_SESSION_COOKIE,
-                ) {
-                    return Ok(val);
-                }
-            }
-        }
-    }
-
-    anyhow::bail!("OpenCode session cookie not found in any browser")
+    crate::auth::cookie_finder::find_browser_cookie(OPENCODE_HOST, OPENCODE_SESSION_COOKIE).await
 }

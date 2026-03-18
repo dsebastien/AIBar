@@ -19,19 +19,13 @@ impl FetchStrategy for OpenRouterApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(OPENROUTER_API_TOKEN_ENV)
-            || std::env::var(OPENROUTER_API_TOKEN_ENV).is_ok()
+        ctx.has_env(OPENROUTER_API_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let token = ctx
-            .env
-            .get(OPENROUTER_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| std::env::var(OPENROUTER_API_TOKEN_ENV).ok())
-            .ok_or_else(|| anyhow::anyhow!("OPENROUTER_API_KEY not set"))?;
+        let token = ctx.require_env(OPENROUTER_API_TOKEN_ENV)?;
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(OPENROUTER_AUTH_KEY_URL)
             .header("Authorization", format!("Bearer {}", token))

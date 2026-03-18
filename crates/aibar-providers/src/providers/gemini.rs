@@ -82,20 +82,14 @@ impl FetchStrategy for GeminiApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(GEMINI_API_TOKEN_ENV)
-            || std::env::var(GEMINI_API_TOKEN_ENV).is_ok()
+        ctx.has_env(GEMINI_API_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let api_key = ctx
-            .env
-            .get(GEMINI_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| std::env::var(GEMINI_API_TOKEN_ENV).ok())
-            .ok_or_else(|| anyhow::anyhow!("GEMINI_API_KEY not set"))?;
+        let api_key = ctx.require_env(GEMINI_API_TOKEN_ENV)?;
 
         // Use the Generative Language API to list models (validates the key)
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(format!(
                 "https://generativelanguage.googleapis.com/v1beta/models?key={}",
@@ -142,30 +136,17 @@ impl FetchStrategy for GeminiApiTokenStrategy {
 }
 
 fn which_gemini() -> Option<String> {
-    if let Ok(output) = std::process::Command::new("which")
-        .arg("gemini")
-        .output()
-    {
-        if output.status.success() {
-            return Some("gemini".to_string());
-        }
-    }
-    None
+    crate::cli_helpers::which_cli(&["gemini"])
 }
 
 fn parse_gemini_cli_output(output: &str) -> f64 {
-    // TODO: Parse actual gemini CLI output format
-    // Look for patterns like "42/1500 requests" or "42% used"
+    // Try percentage first
+    let pct = crate::cli_helpers::parse_percent_from_text(output);
+    if pct > 0.0 {
+        return pct;
+    }
+    // Try to find "X/Y" fraction pattern
     for line in output.lines() {
-        // Try to find percentage
-        if let Some(pct) = line
-            .split_whitespace()
-            .find(|w| w.ends_with('%'))
-            .and_then(|w| w.trim_end_matches('%').parse::<f64>().ok())
-        {
-            return pct;
-        }
-        // Try to find "X/Y" fraction pattern
         if let Some((used, total)) = parse_fraction(line) {
             if total > 0.0 {
                 return (used / total) * 100.0;

@@ -11,15 +11,13 @@ interface UsageProgressBarProps {
 export function UsageProgressBar({ rateWindow, label }: UsageProgressBarProps) {
     const { usedPercent, resetsAt, resetDescription } = rateWindow
 
-    const color = usedPercent < 50 ? 'green' : usedPercent < 80 ? 'yellow' : 'red'
-
     return (
         <div className='space-y-1'>
             <div className='flex items-center justify-between text-xs'>
                 <span className='text-app-text-secondary'>{label}</span>
                 <span className='font-medium'>{formatPercent(usedPercent)}</span>
             </div>
-            <Progress value={usedPercent} color={color} />
+            <Progress value={usedPercent} />
             {resetsAt && (
                 <div className='text-app-text-secondary text-[10px]'>
                     <ResetTimeLabel resetsAt={resetsAt} />

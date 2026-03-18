@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatResetTime } from '@/lib/format'
 
 interface ResetTimeLabelProps {
@@ -6,21 +6,18 @@ interface ResetTimeLabelProps {
 }
 
 export function ResetTimeLabel({ resetsAt }: ResetTimeLabelProps) {
-    const initialLabel = useMemo(() => formatResetTime(resetsAt), [resetsAt])
-    const [label, setLabel] = useState(initialLabel)
+    const [tick, setTick] = useState(0)
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setLabel(formatResetTime(resetsAt))
+            setTick((t) => t + 1)
         }, 60_000)
-
         return () => clearInterval(interval)
     }, [resetsAt])
 
-    // Sync label when resetsAt changes
-    useEffect(() => {
-        setLabel(initialLabel)
-    }, [initialLabel])
+    // Re-derive on every render (triggered by tick or prop change)
+    void tick
+    const label = formatResetTime(resetsAt)
 
     return <span>{label}</span>
 }

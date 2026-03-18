@@ -38,6 +38,7 @@ pub struct FetchContext {
     pub web_timeout: Duration,
     pub verbose: bool,
     pub env: HashMap<String, String>,
+    pub http_client: reqwest::Client,
 }
 
 impl Default for FetchContext {
@@ -49,7 +50,23 @@ impl Default for FetchContext {
             web_timeout: Duration::from_secs(30),
             verbose: false,
             env: HashMap::new(),
+            http_client: reqwest::Client::new(),
         }
+    }
+}
+
+impl FetchContext {
+    pub fn has_env(&self, key: &str) -> bool {
+        self.env.contains_key(key) || std::env::var(key).is_ok()
+    }
+
+    pub fn get_env(&self, key: &str) -> Option<String> {
+        self.env.get(key).cloned().or_else(|| std::env::var(key).ok())
+    }
+
+    pub fn require_env(&self, key: &str) -> anyhow::Result<String> {
+        self.get_env(key)
+            .ok_or_else(|| anyhow::anyhow!("{} not set", key))
     }
 }
 

@@ -12,7 +12,13 @@ pub async fn get_all_usage(
     let snapshots = state.usage_snapshots.read().await;
     let result: HashMap<String, UsageSnapshot> = snapshots
         .iter()
-        .map(|(id, snap)| (format!("{:?}", id).to_lowercase(), snap.clone()))
+        .map(|(id, snap)| {
+            let key = serde_json::to_value(id)
+                .ok()
+                .and_then(|v| v.as_str().map(String::from))
+                .unwrap_or_else(|| format!("{:?}", id).to_lowercase());
+            (key, snap.clone())
+        })
         .collect();
     Ok(result)
 }
@@ -24,7 +30,7 @@ pub async fn refresh_provider(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let pid = parse_provider_id(&provider_id)?;
+    let pid: ProviderId = provider_id.parse()?;
     RefreshManager::refresh_single(pid, &state.usage_snapshots, &app).await;
     Ok(())
 }
@@ -38,10 +44,4 @@ pub async fn refresh_all(state: State<'_, AppState>, app: AppHandle) -> Result<(
     };
     RefreshManager::refresh_all(&providers, &state.usage_snapshots, &app).await;
     Ok(())
-}
-
-/// Parse a provider ID string into a ProviderId enum variant.
-fn parse_provider_id(id: &str) -> Result<ProviderId, String> {
-    serde_json::from_value(serde_json::Value::String(id.to_string()))
-        .map_err(|_| format!("Unknown provider: {}", id))
 }

@@ -4,10 +4,10 @@ import { Select, type SelectOption } from '@/components/ui/select'
 
 const CADENCE_OPTIONS: SelectOption[] = [
     { value: 'manual', label: 'Manual' },
-    { value: '1m', label: 'Every 1 minute' },
-    { value: '2m', label: 'Every 2 minutes' },
-    { value: '5m', label: 'Every 5 minutes' },
-    { value: '15m', label: 'Every 15 minutes' }
+    { value: 'one_minute', label: 'Every 1 minute' },
+    { value: 'two_minutes', label: 'Every 2 minutes' },
+    { value: 'five_minutes', label: 'Every 5 minutes' },
+    { value: 'fifteen_minutes', label: 'Every 15 minutes' }
 ]
 
 export function RefreshCadenceSelector() {

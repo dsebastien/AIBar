@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { useLocation } from 'react-router'
 import { SettingsLayout } from '@/components/layout/settings-layout'
 import { ProviderToggleList } from '@/components/settings/provider-toggle-list'
@@ -48,11 +49,19 @@ function DisplayTab() {
 }
 
 function AboutTab() {
+    const [version, setVersion] = useState<string | null>(null)
+
+    useEffect(() => {
+        void invoke<string>('get_app_version').then(setVersion)
+    }, [])
+
     return (
         <div className='space-y-4'>
             <div>
                 <h3 className='text-sm font-medium'>AIBar</h3>
-                <p className='text-app-text-secondary text-xs'>Version 0.1.0</p>
+                <p className='text-app-text-secondary text-xs'>
+                    {version ? `Version ${version}` : 'Loading version...'}
+                </p>
             </div>
             <div className='space-y-1'>
                 <p className='text-app-text-secondary text-xs'>

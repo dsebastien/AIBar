@@ -67,29 +67,17 @@ impl FetchStrategy for KiroCliStrategy {
 }
 
 fn which_kiro() -> Option<String> {
-    if let Ok(output) = std::process::Command::new("which")
-        .arg("kiro")
-        .output()
-    {
-        if output.status.success() {
-            return Some("kiro".to_string());
-        }
-    }
-    None
+    crate::cli_helpers::which_cli(&["kiro"])
 }
 
 fn parse_kiro_cli_output(output: &str) -> f64 {
-    // TODO: Parse actual Kiro CLI output format
-    // Look for patterns like "Usage: 42%" or "42/500 requests"
+    // Try percentage first
+    let pct = crate::cli_helpers::parse_percent_from_text(output);
+    if pct > 0.0 {
+        return pct;
+    }
+    // Try fraction pattern "X/Y"
     for line in output.lines() {
-        if let Some(pct) = line
-            .split_whitespace()
-            .find(|w| w.ends_with('%'))
-            .and_then(|w| w.trim_end_matches('%').parse::<f64>().ok())
-        {
-            return pct;
-        }
-        // Try fraction pattern "X/Y"
         for word in line.split_whitespace() {
             let parts: Vec<&str> = word.split('/').collect();
             if parts.len() == 2 {

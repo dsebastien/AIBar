@@ -1,6 +1,6 @@
-import { PROVIDERS } from '@/lib/constants'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useUsageStore } from '@/stores/usage-store'
+import { getEnabledProviders } from '@/lib/utils/get-enabled-providers'
 import { ProviderCard } from '@/components/providers/provider-card'
 
 export function ProviderGrid() {
@@ -11,10 +11,7 @@ export function ProviderGrid() {
         return null
     }
 
-    const orderedProviders = config.providerOrder
-        .filter((id) => config.enabledProviders.includes(id))
-        .map((id) => PROVIDERS.find((p) => p.id === id))
-        .filter((p) => p !== undefined)
+    const orderedProviders = getEnabledProviders(config)
 
     return (
         <div className='grid grid-cols-1 gap-3 p-3'>

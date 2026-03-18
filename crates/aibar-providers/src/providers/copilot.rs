@@ -2,7 +2,6 @@ use crate::models::UsageSnapshot;
 use crate::traits::{FetchContext, FetchKind, FetchResult, FetchStrategy};
 use async_trait::async_trait;
 use chrono::Utc;
-use std::path::PathBuf;
 
 const COPILOT_API_TOKEN_ENV: &str = "GITHUB_COPILOT_TOKEN";
 const GITHUB_TOKEN_ENV: &str = "GITHUB_TOKEN";
@@ -15,23 +14,8 @@ const COPILOT_BILLING_API: &str = "https://api.github.com/user/copilot_billing/u
 
 pub struct CopilotDeviceFlowStrategy;
 
-fn copilot_config_dir() -> Option<PathBuf> {
-    #[cfg(target_os = "linux")]
-    {
-        std::env::var("HOME")
-            .ok()
-            .map(|h| PathBuf::from(h).join(".config").join("github-copilot"))
-    }
-    #[cfg(target_os = "windows")]
-    {
-        std::env::var("LOCALAPPDATA")
-            .ok()
-            .map(|h| PathBuf::from(h).join("github-copilot"))
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        None
-    }
+fn copilot_config_dir() -> Option<std::path::PathBuf> {
+    crate::cli_helpers::app_config_dir_with_env("github-copilot", "github-copilot", "LOCALAPPDATA")
 }
 
 fn read_copilot_token() -> Option<String> {
@@ -107,20 +91,13 @@ impl FetchStrategy for CopilotApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(COPILOT_API_TOKEN_ENV)
-            || ctx.env.contains_key(GITHUB_TOKEN_ENV)
-            || std::env::var(COPILOT_API_TOKEN_ENV).is_ok()
-            || std::env::var(GITHUB_TOKEN_ENV).is_ok()
+        ctx.has_env(COPILOT_API_TOKEN_ENV) || ctx.has_env(GITHUB_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
         let token = ctx
-            .env
-            .get(COPILOT_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| ctx.env.get(GITHUB_TOKEN_ENV).cloned())
-            .or_else(|| std::env::var(COPILOT_API_TOKEN_ENV).ok())
-            .or_else(|| std::env::var(GITHUB_TOKEN_ENV).ok())
+            .get_env(COPILOT_API_TOKEN_ENV)
+            .or_else(|| ctx.get_env(GITHUB_TOKEN_ENV))
             .ok_or_else(|| {
                 anyhow::anyhow!("Neither GITHUB_COPILOT_TOKEN nor GITHUB_TOKEN is set")
             })?;
@@ -144,7 +121,7 @@ async fn fetch_copilot_usage(
     strategy_kind: FetchKind,
     source_label: &str,
 ) -> anyhow::Result<FetchResult> {
-    let client = reqwest::Client::new();
+    let client = ctx.http_client.clone();
 
     // Try the copilot billing/usage endpoint first
     let response = client

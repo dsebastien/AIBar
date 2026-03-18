@@ -21,26 +21,17 @@ impl FetchStrategy for MiniMaxApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(MINIMAX_API_TOKEN_ENV)
-            || std::env::var(MINIMAX_API_TOKEN_ENV).is_ok()
+        ctx.has_env(MINIMAX_API_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let token = ctx
-            .env
-            .get(MINIMAX_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| std::env::var(MINIMAX_API_TOKEN_ENV).ok())
-            .ok_or_else(|| anyhow::anyhow!("MINIMAX_API_KEY not set"))?;
+        let token = ctx.require_env(MINIMAX_API_TOKEN_ENV)?;
 
         let group_id = ctx
-            .env
-            .get(MINIMAX_GROUP_ID_ENV)
-            .cloned()
-            .or_else(|| std::env::var(MINIMAX_GROUP_ID_ENV).ok())
+            .get_env(MINIMAX_GROUP_ID_ENV)
             .unwrap_or_default();
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let url = if group_id.is_empty() {
             format!("{}/billing/usage", MINIMAX_API_BASE)
         } else {

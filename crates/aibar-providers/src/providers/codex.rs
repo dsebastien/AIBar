@@ -2,7 +2,6 @@ use crate::models::UsageSnapshot;
 use crate::traits::{FetchContext, FetchKind, FetchResult, FetchStrategy};
 use async_trait::async_trait;
 use chrono::Utc;
-use std::path::PathBuf;
 
 const OPENAI_API_TOKEN_ENV: &str = "OPENAI_API_KEY";
 const OPENAI_USAGE_API: &str = "https://api.openai.com/v1/dashboard/billing/usage";
@@ -14,23 +13,8 @@ const OPENAI_SUBSCRIPTION_API: &str = "https://api.openai.com/v1/dashboard/billi
 
 pub struct CodexOAuthStrategy;
 
-fn codex_config_dir() -> Option<PathBuf> {
-    #[cfg(target_os = "linux")]
-    {
-        std::env::var("HOME")
-            .ok()
-            .map(|h| PathBuf::from(h).join(".config").join("codex"))
-    }
-    #[cfg(target_os = "windows")]
-    {
-        std::env::var("APPDATA")
-            .ok()
-            .map(|a| PathBuf::from(a).join("codex"))
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        None
-    }
+fn codex_config_dir() -> Option<std::path::PathBuf> {
+    crate::cli_helpers::app_config_dir("codex", "codex")
 }
 
 fn read_codex_oauth_token() -> Option<String> {
@@ -90,17 +74,11 @@ impl FetchStrategy for CodexApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(OPENAI_API_TOKEN_ENV)
-            || std::env::var(OPENAI_API_TOKEN_ENV).is_ok()
+        ctx.has_env(OPENAI_API_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let token = ctx
-            .env
-            .get(OPENAI_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| std::env::var(OPENAI_API_TOKEN_ENV).ok())
-            .ok_or_else(|| anyhow::anyhow!("OPENAI_API_KEY not set"))?;
+        let token = ctx.require_env(OPENAI_API_TOKEN_ENV)?;
 
         fetch_openai_usage(&token, ctx, self.id(), self.kind(), "api").await
     }
@@ -187,17 +165,7 @@ impl FetchStrategy for CodexCliStrategy {
         }
 
         // Text output fallback
-        let mut used_percent = 0.0;
-        for line in stdout.lines() {
-            if let Some(pct) = line
-                .split_whitespace()
-                .find(|w| w.ends_with('%'))
-                .and_then(|w| w.trim_end_matches('%').parse::<f64>().ok())
-            {
-                used_percent = pct;
-                break;
-            }
-        }
+        let used_percent = crate::cli_helpers::parse_percent_from_text(&stdout);
 
         Ok(FetchResult {
             usage: UsageSnapshot {
@@ -230,18 +198,7 @@ impl FetchStrategy for CodexCliStrategy {
 // ---------------------------------------------------------------------------
 
 fn which_codex() -> Option<String> {
-    let candidates = ["codex", "openai"];
-    for name in &candidates {
-        if let Ok(output) = std::process::Command::new("which")
-            .arg(name)
-            .output()
-        {
-            if output.status.success() {
-                return Some(name.to_string());
-            }
-        }
-    }
-    None
+    crate::cli_helpers::which_cli(&["codex", "openai"])
 }
 
 async fn fetch_openai_usage(
@@ -251,7 +208,7 @@ async fn fetch_openai_usage(
     strategy_kind: FetchKind,
     source_label: &str,
 ) -> anyhow::Result<FetchResult> {
-    let client = reqwest::Client::new();
+    let client = ctx.http_client.clone();
 
     // Fetch subscription info (limits)
     let sub_response = client

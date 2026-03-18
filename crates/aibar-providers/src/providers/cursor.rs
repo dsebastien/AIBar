@@ -2,7 +2,6 @@ use crate::models::UsageSnapshot;
 use crate::traits::{FetchContext, FetchKind, FetchResult, FetchStrategy};
 use async_trait::async_trait;
 use chrono::Utc;
-use std::path::PathBuf;
 
 const CURSOR_SETTINGS_API: &str = "https://www.cursor.com/api/usage";
 const CURSOR_SESSION_COOKIE_NAME: &str = "WorkosCursorSessionToken";
@@ -22,23 +21,8 @@ fn read_cursor_session_token() -> Option<String> {
         .map(|s| s.to_string())
 }
 
-fn cursor_config_dir() -> Option<PathBuf> {
-    #[cfg(target_os = "linux")]
-    {
-        std::env::var("HOME")
-            .ok()
-            .map(|h| PathBuf::from(h).join(".config").join("Cursor"))
-    }
-    #[cfg(target_os = "windows")]
-    {
-        std::env::var("APPDATA")
-            .ok()
-            .map(|h| PathBuf::from(h).join("Cursor"))
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        None
-    }
+fn cursor_config_dir() -> Option<std::path::PathBuf> {
+    crate::cli_helpers::app_config_dir("Cursor", "Cursor")
 }
 
 /// Strategy that reads Cursor session token from local storage.
@@ -62,7 +46,7 @@ impl FetchStrategy for CursorLocalTokenStrategy {
         let token = read_cursor_session_token()
             .ok_or_else(|| anyhow::anyhow!("Cursor session token not found"))?;
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(CURSOR_SETTINGS_API)
             .header("Cookie", format!("{}={}", CURSOR_SESSION_COOKIE_NAME, token))
@@ -142,53 +126,9 @@ impl FetchStrategy for CursorCookieStrategy {
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let profiles = crate::auth::browser_detect::detect_browser_profiles();
-        let mut cookie_value: Option<String> = None;
+        let cookie = crate::auth::cookie_finder::find_browser_cookie(CURSOR_HOST, CURSOR_SESSION_COOKIE_NAME).await?;
 
-        for profile in &profiles {
-            match profile.browser {
-                crate::auth::browser_detect::Browser::Firefox => {
-                    if let Ok(Some(val)) = crate::auth::cookie_firefox::read_firefox_cookies(
-                        &profile.profile_path,
-                        CURSOR_HOST,
-                        CURSOR_SESSION_COOKIE_NAME,
-                    ) {
-                        cookie_value = Some(val);
-                        break;
-                    }
-                }
-                _ => {
-                    #[cfg(target_os = "linux")]
-                    if let Ok(Some(val)) =
-                        crate::auth::cookie_chrome_linux::read_chrome_cookie(
-                            &profile.profile_path,
-                            CURSOR_HOST,
-                            CURSOR_SESSION_COOKIE_NAME,
-                        )
-                        .await
-                    {
-                        cookie_value = Some(val);
-                        break;
-                    }
-                    #[cfg(target_os = "windows")]
-                    if let Ok(Some(val)) =
-                        crate::auth::cookie_chrome_windows::read_chrome_cookie(
-                            &profile.profile_path,
-                            CURSOR_HOST,
-                            CURSOR_SESSION_COOKIE_NAME,
-                        )
-                    {
-                        cookie_value = Some(val);
-                        break;
-                    }
-                }
-            }
-        }
-
-        let cookie = cookie_value
-            .ok_or_else(|| anyhow::anyhow!("Cursor session cookie not found in any browser"))?;
-
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(CURSOR_SETTINGS_API)
             .header(

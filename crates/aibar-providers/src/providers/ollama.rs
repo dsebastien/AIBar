@@ -15,15 +15,16 @@ impl FetchStrategy for OllamaLocalStrategy {
         FetchKind::LocalProbe
     }
 
-    async fn is_available(&self, _ctx: &FetchContext) -> bool {
+    async fn is_available(&self, ctx: &FetchContext) -> bool {
         // Check if Ollama is running locally
-        reqwest::get("http://localhost:11434/api/version")
+        ctx.http_client.get("http://localhost:11434/api/version")
+            .send()
             .await
             .is_ok()
     }
 
-    async fn fetch(&self, _ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let response = reqwest::get("http://localhost:11434/api/ps").await?;
+    async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
+        let response = ctx.http_client.get("http://localhost:11434/api/ps").send().await?;
         let body: serde_json::Value = response.json().await?;
 
         let models = body["models"]

@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { create } from 'zustand'
 import type { ProviderId, UsageSnapshot } from '@/lib/types'
+
+let unlistenUsageUpdated: UnlistenFn | null = null
 
 interface UsageState {
     snapshots: Record<string, UsageSnapshot | null>
@@ -25,9 +27,20 @@ export const useUsageStore = create<UsageState>((set, get) => ({
             // Backend may not be ready yet
         }
 
-        await listen<Record<string, UsageSnapshot | null>>('usage-updated', (event) => {
-            set({ snapshots: event.payload })
-        })
+        // Clean up previous listener before registering a new one
+        if (unlistenUsageUpdated) {
+            unlistenUsageUpdated()
+            unlistenUsageUpdated = null
+        }
+
+        unlistenUsageUpdated = await listen<Record<string, UsageSnapshot | null>>(
+            'usage-updated',
+            (event) => {
+                set((state) => ({
+                    snapshots: { ...state.snapshots, ...event.payload }
+                }))
+            }
+        )
     },
 
     refreshProvider: async (id: ProviderId) => {

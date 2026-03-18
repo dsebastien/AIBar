@@ -28,7 +28,7 @@ impl FetchStrategy for AugmentCookieStrategy {
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
         let cookie = find_augment_cookie().await?;
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(AUGMENT_USAGE_API)
             .header("Cookie", format!("{}={}", AUGMENT_SESSION_COOKIE, cookie))
@@ -147,71 +147,13 @@ impl FetchStrategy for AugmentCliStrategy {
 }
 
 fn which_augment() -> Option<String> {
-    let candidates = ["augment", "augment-code"];
-    for name in &candidates {
-        if let Ok(output) = std::process::Command::new("which")
-            .arg(name)
-            .output()
-        {
-            if output.status.success() {
-                return Some(name.to_string());
-            }
-        }
-    }
-    None
+    crate::cli_helpers::which_cli(&["augment", "augment-code"])
 }
 
 fn parse_augment_cli_output(output: &str) -> f64 {
-    // TODO: Parse real augment CLI output format
-    // Look for patterns like "Usage: 42/500" or "42% used"
-    for line in output.lines() {
-        if let Some(pct) = line
-            .split_whitespace()
-            .find(|w| w.ends_with('%'))
-            .and_then(|w| w.trim_end_matches('%').parse::<f64>().ok())
-        {
-            return pct;
-        }
-    }
-    0.0
+    crate::cli_helpers::parse_percent_from_text(output)
 }
 
 async fn find_augment_cookie() -> anyhow::Result<String> {
-    let profiles = crate::auth::browser_detect::detect_browser_profiles();
-
-    for profile in &profiles {
-        match profile.browser {
-            crate::auth::browser_detect::Browser::Firefox => {
-                if let Ok(Some(val)) = crate::auth::cookie_firefox::read_firefox_cookies(
-                    &profile.profile_path,
-                    AUGMENT_HOST,
-                    AUGMENT_SESSION_COOKIE,
-                ) {
-                    return Ok(val);
-                }
-            }
-            _ => {
-                #[cfg(target_os = "linux")]
-                if let Ok(Some(val)) = crate::auth::cookie_chrome_linux::read_chrome_cookie(
-                    &profile.profile_path,
-                    AUGMENT_HOST,
-                    AUGMENT_SESSION_COOKIE,
-                )
-                .await
-                {
-                    return Ok(val);
-                }
-                #[cfg(target_os = "windows")]
-                if let Ok(Some(val)) = crate::auth::cookie_chrome_windows::read_chrome_cookie(
-                    &profile.profile_path,
-                    AUGMENT_HOST,
-                    AUGMENT_SESSION_COOKIE,
-                ) {
-                    return Ok(val);
-                }
-            }
-        }
-    }
-
-    anyhow::bail!("Augment session cookie not found in any browser")
+    crate::auth::cookie_finder::find_browser_cookie(AUGMENT_HOST, AUGMENT_SESSION_COOKIE).await
 }

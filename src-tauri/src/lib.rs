@@ -5,9 +5,7 @@ mod state;
 use log::info;
 use managers::settings_manager::SettingsManager;
 use managers::tray_manager::TrayManager;
-use std::sync::Arc;
 use tauri::Manager;
-use tokio::sync::RwLock;
 
 use managers::refresh_manager::RefreshManager;
 use state::AppState;
@@ -32,7 +30,7 @@ pub fn run() {
             // Create shared application state
             let app_state = AppState::new(config.clone());
             let usage_snapshots = app_state.usage_snapshots.clone();
-            let enabled_providers = Arc::new(RwLock::new(config.enabled_providers.clone()));
+            let app_config = app_state.config.clone();
 
             // Manage AppState so commands can access it via State<AppState>
             app.manage(app_state);
@@ -46,7 +44,7 @@ pub fn run() {
                 config.refresh_cadence,
                 app_handle.clone(),
             );
-            refresh_mgr.start(enabled_providers);
+            refresh_mgr.start(app_config);
 
             // Hide main window initially (system tray app)
             if let Some(window) = app.get_webview_window("main") {

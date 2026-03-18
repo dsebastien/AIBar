@@ -37,8 +37,8 @@ export function CredentialEntryForm({ providerId, providerName }: CredentialEntr
         <div className='border-app-border space-y-2 rounded-md border p-3'>
             <div className='flex items-center justify-between'>
                 <span className='text-sm font-medium'>{providerName}</span>
-                <Badge status={status === 'configured' ? 'operational' : 'outage'}>
-                    {status === 'configured' ? 'Configured' : 'Missing'}
+                <Badge status={status === 'stored' ? 'operational' : 'outage'}>
+                    {status === 'stored' ? 'Configured' : 'Missing'}
                 </Badge>
             </div>
 
@@ -57,7 +57,7 @@ export function CredentialEntryForm({ providerId, providerName }: CredentialEntr
                 >
                     Save
                 </Button>
-                {status === 'configured' && (
+                {status === 'stored' && (
                     <Button size='sm' variant='destructive' onClick={() => void handleDelete()}>
                         Remove
                     </Button>

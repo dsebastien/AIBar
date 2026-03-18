@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { create } from 'zustand'
 import type { ProviderId } from '@/lib/types'
 
-export type CredentialStatus = 'configured' | 'missing' | 'checking'
+export type CredentialStatus = 'stored' | 'missing' | 'checking'
 
 interface CredentialsState {
     credentials: Record<string, CredentialStatus>
@@ -18,7 +18,7 @@ export const useCredentialsStore = create<CredentialsState>((set, get) => ({
         try {
             await invoke('store_api_token', { providerId: id, token })
             set({
-                credentials: { ...get().credentials, [id]: 'configured' as CredentialStatus }
+                credentials: { ...get().credentials, [id]: 'stored' as CredentialStatus }
             })
         } catch {
             // Store failed
@@ -41,7 +41,7 @@ export const useCredentialsStore = create<CredentialsState>((set, get) => ({
             const statuses = await invoke<Record<string, boolean>>('check_credentials')
             const credentials: Record<string, CredentialStatus> = {}
             for (const [key, hasCredential] of Object.entries(statuses)) {
-                credentials[key] = hasCredential ? 'configured' : 'missing'
+                credentials[key] = hasCredential ? 'stored' : 'missing'
             }
             set({ credentials })
         } catch {

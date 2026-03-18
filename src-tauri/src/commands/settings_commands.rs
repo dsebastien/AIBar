@@ -37,8 +37,7 @@ pub async fn toggle_provider(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let pid: ProviderId = serde_json::from_value(serde_json::Value::String(provider_id.clone()))
-        .map_err(|_| format!("Unknown provider: {}", provider_id))?;
+    let pid: ProviderId = provider_id.parse()?;
 
     let mut config = state.config.write().await;
 

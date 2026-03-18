@@ -58,6 +58,15 @@ impl ProviderId {
     }
 }
 
+impl std::str::FromStr for ProviderId {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| format!("Unknown provider: {}", s))
+    }
+}
+
 impl fmt::Display for ProviderId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {

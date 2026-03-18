@@ -19,9 +19,9 @@ pub struct ProviderStatusInfo {
 }
 
 /// Poll a StatusPage.io status page for current status.
-pub async fn poll_status_page(url: &str) -> anyhow::Result<ProviderStatusInfo> {
+pub async fn poll_status_page(url: &str, client: &reqwest::Client) -> anyhow::Result<ProviderStatusInfo> {
     let api_url = format!("{}/api/v2/status.json", url.trim_end_matches('/'));
-    let response = reqwest::get(&api_url).await?;
+    let response = client.get(&api_url).send().await?;
     let body: serde_json::Value = response.json().await?;
 
     let indicator = body["status"]["indicator"]

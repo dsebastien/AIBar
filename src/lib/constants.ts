@@ -213,5 +213,5 @@ export const PROVIDERS: ProviderMetadata[] = [
     }
 ]
 
-export const DEFAULT_REFRESH_CADENCE = '5m'
+export const DEFAULT_REFRESH_CADENCE = 'five_minutes'
 export const DEFAULT_DISPLAY_MODE = 'individual'

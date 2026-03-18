@@ -22,7 +22,12 @@ export type ProviderId =
     | 'antigravity'
     | 'opencode'
 
-export type RefreshCadence = 'manual' | '1m' | '2m' | '5m' | '15m'
+export type RefreshCadence =
+    | 'manual'
+    | 'one_minute'
+    | 'two_minutes'
+    | 'five_minutes'
+    | 'fifteen_minutes'
 
 export type DisplayMode = 'individual' | 'merged'
 

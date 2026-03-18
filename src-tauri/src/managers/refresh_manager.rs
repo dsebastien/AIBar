@@ -1,6 +1,29 @@
-use aibar_providers::models::{ProviderId, RefreshCadence, UsageSnapshot};
+use aibar_providers::models::{AppConfig, ProviderId, RefreshCadence, UsageSnapshot};
 use aibar_providers::pipeline;
-use aibar_providers::providers::ollama::OllamaLocalStrategy;
+use aibar_providers::providers::{
+    amp::AmpCookieStrategy,
+    antigravity::AntigravityCookieStrategy,
+    augment::{AugmentCliStrategy, AugmentCookieStrategy},
+    claude::{ClaudeCliStrategy, ClaudeOAuthStrategy, ClaudeWebCookieStrategy},
+    codex::{CodexApiTokenStrategy, CodexCliStrategy, CodexOAuthStrategy},
+    copilot::{CopilotApiTokenStrategy, CopilotDeviceFlowStrategy},
+    cursor::{CursorCookieStrategy, CursorLocalTokenStrategy},
+    factory::FactoryCookieStrategy,
+    gemini::{GeminiApiTokenStrategy, GeminiCliStrategy},
+    jetbrains::JetBrainsLocalConfigStrategy,
+    kilo::KiloCookieStrategy,
+    kimi::KimiCookieJwtStrategy,
+    kimi_k2::KimiK2ApiTokenStrategy,
+    kiro::KiroCliStrategy,
+    minimax::MiniMaxApiTokenStrategy,
+    ollama::OllamaLocalStrategy,
+    opencode::OpenCodeCookieStrategy,
+    openrouter::OpenRouterApiTokenStrategy,
+    synthetic::SyntheticApiTokenStrategy,
+    vertex_ai::VertexAiCliStrategy,
+    warp::WarpCookieStrategy,
+    zai::ZaiApiTokenStrategy,
+};
 use aibar_providers::traits::FetchContext;
 use log::{error, info, warn};
 use std::collections::HashMap;
@@ -37,7 +60,7 @@ impl RefreshManager {
     }
 
     /// Start the background refresh loop.
-    pub fn start(&self, enabled_providers: Arc<RwLock<Vec<ProviderId>>>) {
+    pub fn start(&self, config: Arc<RwLock<AppConfig>>) {
         let snapshots = self.usage_snapshots.clone();
         let cadence = self.config_cadence.clone();
         let cancel = self.cancel_token.clone();
@@ -69,10 +92,10 @@ impl RefreshManager {
                         // Only refresh if not in manual mode
                         if interval_secs.is_some() {
                             let providers = {
-                                let p = enabled_providers.read().await;
-                                p.clone()
+                                let cfg = config.read().await;
+                                cfg.enabled_providers.clone()
                             };
-                            Self::do_refresh_all(&providers, &snapshots, &app_handle).await;
+                            Self::refresh_all(&providers, &snapshots, &app_handle).await;
                         }
                     }
                 }
@@ -142,37 +165,68 @@ impl RefreshManager {
         }
     }
 
-    /// Refresh usage data for all given providers.
+    /// Refresh usage data for all given providers concurrently.
     pub async fn refresh_all(
         providers: &[ProviderId],
         snapshots: &Arc<RwLock<HashMap<ProviderId, UsageSnapshot>>>,
         app_handle: &AppHandle,
     ) {
-        Self::do_refresh_all(providers, snapshots, app_handle).await;
-    }
-
-    async fn do_refresh_all(
-        providers: &[ProviderId],
-        snapshots: &Arc<RwLock<HashMap<ProviderId, UsageSnapshot>>>,
-        app_handle: &AppHandle,
-    ) {
-        info!("RefreshManager: refreshing {} providers", providers.len());
-        for &provider_id in providers {
-            Self::refresh_single(provider_id, snapshots, app_handle).await;
-        }
+        info!(
+            "RefreshManager: refreshing {} providers concurrently",
+            providers.len()
+        );
+        let futures: Vec<_> = providers
+            .iter()
+            .map(|&pid| Self::refresh_single(pid, snapshots, app_handle))
+            .collect();
+        futures::future::join_all(futures).await;
     }
 }
 
 /// Build the list of fetch strategies for a given provider.
-///
-/// As providers are implemented, this function will grow. Currently only Ollama
-/// has a concrete strategy.
 fn build_strategies(provider_id: ProviderId) -> Vec<Box<dyn aibar_providers::traits::FetchStrategy>> {
     match provider_id {
-        ProviderId::Ollama => {
-            vec![Box::new(OllamaLocalStrategy)]
-        }
-        // Other providers will have strategies added as they are implemented.
-        _ => vec![],
+        ProviderId::Ollama => vec![Box::new(OllamaLocalStrategy)],
+        ProviderId::Claude => vec![
+            Box::new(ClaudeOAuthStrategy),
+            Box::new(ClaudeCliStrategy),
+            Box::new(ClaudeWebCookieStrategy),
+        ],
+        ProviderId::Codex => vec![
+            Box::new(CodexOAuthStrategy),
+            Box::new(CodexApiTokenStrategy),
+            Box::new(CodexCliStrategy),
+        ],
+        ProviderId::Cursor => vec![
+            Box::new(CursorLocalTokenStrategy),
+            Box::new(CursorCookieStrategy),
+        ],
+        ProviderId::Gemini => vec![
+            Box::new(GeminiCliStrategy),
+            Box::new(GeminiApiTokenStrategy),
+        ],
+        ProviderId::Copilot => vec![
+            Box::new(CopilotDeviceFlowStrategy),
+            Box::new(CopilotApiTokenStrategy),
+        ],
+        ProviderId::Augment => vec![
+            Box::new(AugmentCookieStrategy),
+            Box::new(AugmentCliStrategy),
+        ],
+        ProviderId::Amp => vec![Box::new(AmpCookieStrategy)],
+        ProviderId::Kimi => vec![Box::new(KimiCookieJwtStrategy)],
+        ProviderId::KimiK2 => vec![Box::new(KimiK2ApiTokenStrategy)],
+        ProviderId::Zai => vec![Box::new(ZaiApiTokenStrategy)],
+        ProviderId::MiniMax => vec![Box::new(MiniMaxApiTokenStrategy)],
+        ProviderId::Factory => vec![Box::new(FactoryCookieStrategy)],
+        ProviderId::JetBrains => vec![Box::new(JetBrainsLocalConfigStrategy)],
+        ProviderId::Kilo => vec![Box::new(KiloCookieStrategy)],
+        ProviderId::Kiro => vec![Box::new(KiroCliStrategy)],
+        ProviderId::VertexAi => vec![Box::new(VertexAiCliStrategy)],
+        ProviderId::Synthetic => vec![Box::new(SyntheticApiTokenStrategy)],
+        ProviderId::Warp => vec![Box::new(WarpCookieStrategy)],
+        ProviderId::OpenRouter => vec![Box::new(OpenRouterApiTokenStrategy)],
+        ProviderId::Antigravity => vec![Box::new(AntigravityCookieStrategy)],
+        ProviderId::OpenCode => vec![Box::new(OpenCodeCookieStrategy)],
     }
 }

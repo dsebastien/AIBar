@@ -19,19 +19,13 @@ impl FetchStrategy for SyntheticApiTokenStrategy {
     }
 
     async fn is_available(&self, ctx: &FetchContext) -> bool {
-        ctx.env.contains_key(SYNTHETIC_API_TOKEN_ENV)
-            || std::env::var(SYNTHETIC_API_TOKEN_ENV).is_ok()
+        ctx.has_env(SYNTHETIC_API_TOKEN_ENV)
     }
 
     async fn fetch(&self, ctx: &FetchContext) -> anyhow::Result<FetchResult> {
-        let token = ctx
-            .env
-            .get(SYNTHETIC_API_TOKEN_ENV)
-            .cloned()
-            .or_else(|| std::env::var(SYNTHETIC_API_TOKEN_ENV).ok())
-            .ok_or_else(|| anyhow::anyhow!("SYNTHETIC_API_KEY not set"))?;
+        let token = ctx.require_env(SYNTHETIC_API_TOKEN_ENV)?;
 
-        let client = reqwest::Client::new();
+        let client = ctx.http_client.clone();
         let response = client
             .get(format!("{}/account/usage", SYNTHETIC_API_BASE))
             .header("Authorization", format!("Bearer {}", token))

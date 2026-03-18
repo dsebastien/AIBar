@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod cli_helpers;
 pub mod cost_models;
 pub mod models;
 pub mod pace;

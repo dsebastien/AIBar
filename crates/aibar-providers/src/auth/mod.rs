@@ -1,4 +1,5 @@
 pub mod browser_detect;
+pub mod cookie_finder;
 pub mod cookie_firefox;
 pub mod jwt;
 

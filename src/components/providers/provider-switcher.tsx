@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { PROVIDERS } from '@/lib/constants'
 import type { ProviderId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useUsageStore } from '@/stores/usage-store'
+import { getEnabledProviders } from '@/lib/utils/get-enabled-providers'
 import { cn } from '@/lib/utils/cn'
 import { ProviderCard } from '@/components/providers/provider-card'
 
@@ -13,10 +13,7 @@ export function ProviderSwitcher() {
 
     if (!config) return null
 
-    const enabledProviders = config.providerOrder
-        .filter((id) => config.enabledProviders.includes(id))
-        .map((id) => PROVIDERS.find((p) => p.id === id))
-        .filter((p) => p !== undefined)
+    const enabledProviders = getEnabledProviders(config)
 
     const currentId = activeProvider ?? enabledProviders[0]?.id ?? null
     const currentProvider = enabledProviders.find((p) => p.id === currentId)

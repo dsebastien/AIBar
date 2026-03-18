@@ -8,15 +8,22 @@ use tauri::{AppHandle, Manager};
 
 const ICON_SIZE: u32 = 32;
 
+const MENU_REFRESH_ALL: &str = "refresh_all";
+const MENU_SETTINGS: &str = "settings";
+const MENU_QUIT: &str = "quit";
+
 /// Manages the system tray icon and its context menu.
 pub struct TrayManager;
 
 impl TrayManager {
     /// Build and register the tray icon with context menu and event handlers.
     pub fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        let refresh_item = MenuItemBuilder::with_id("refresh_all", "Refresh All").build(app)?;
-        let settings_item = MenuItemBuilder::with_id("settings", "Settings...").build(app)?;
-        let quit_item = MenuItemBuilder::with_id("quit", "Quit AIBar").build(app)?;
+        let refresh_item =
+            MenuItemBuilder::with_id(MENU_REFRESH_ALL, "Refresh All").build(app)?;
+        let settings_item =
+            MenuItemBuilder::with_id(MENU_SETTINGS, "Settings...").build(app)?;
+        let quit_item =
+            MenuItemBuilder::with_id(MENU_QUIT, "Quit AIBar").build(app)?;
 
         let menu = MenuBuilder::new(app)
             .item(&refresh_item)
@@ -51,7 +58,7 @@ impl TrayManager {
             })
             .on_menu_event(move |app, event| {
                 match event.id().as_ref() {
-                    "refresh_all" => {
+                    MENU_REFRESH_ALL => {
                         info!("TrayManager: refresh all requested from menu");
                         let handle = app_handle_menu.clone();
                         tauri::async_runtime::spawn(async move {
@@ -68,13 +75,13 @@ impl TrayManager {
                             .await;
                         });
                     }
-                    "settings" => {
+                    MENU_SETTINGS => {
                         info!("TrayManager: settings requested from menu");
                         if let Err(e) = window_manager::open_settings(app) {
                             error!("TrayManager: failed to open settings: {}", e);
                         }
                     }
-                    "quit" => {
+                    MENU_QUIT => {
                         info!("TrayManager: quit requested from menu");
                         app.exit(0);
                     }
