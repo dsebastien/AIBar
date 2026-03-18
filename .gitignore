@@ -27,6 +27,9 @@ Codexbar.app/
 Icon.iconset
 debug_*.swift
 
+# Worktrees
+.worktrees/
+
 # Misc
 .DS_Store
 .vscode/
